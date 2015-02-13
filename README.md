@@ -45,4 +45,7 @@ Calling C#get_ivar...
 I recommend comparing the above with notes detailed within the
 `concerns.rb` file.
 
-Ref: https://www.ruby-forum.com/topic/4405944
+### References
+
+1. https://www.ruby-forum.com/topic/4405944
+2. https://github.com/rails/rails/blob/f37ad331089f64ab0386e8ac94b6626b45c38a1e/activesupport/lib/active_support/concern.rb
