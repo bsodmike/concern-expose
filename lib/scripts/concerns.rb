@@ -1,16 +1,7 @@
 require 'active_support/concern'
 
- module D
-   def get_ivar
-     puts "> D#get_ivar: '#{ivar}' (self = #{self.class})!"
-   end
-
-   def self.append_features(mod)
-     super
-     puts "D.append_features: mod=#{mod}, self=#{self}\n\n"
-   end
- end
-
+# NOTE:
+# Overwrite `ActiveSupport::Concern` to add output to STDOUT.
 module ActiveSupport
   module Concern
     def append_features(base)
@@ -53,6 +44,19 @@ module A
 
 end
 
+# This is a dependency on module B
+module D
+  def get_ivar
+    puts "> D#get_ivar: '#{ivar}' (self = #{self.class})!"
+  end
+
+  def self.append_features(mod)
+    super
+    puts "D.append_features: mod=#{mod}, self=#{self}\n\n"
+  end
+end
+
+# Notice how module B's dependency on D is resolved by `ActiveSupport::Concern`
 module B
   extend ActiveSupport::Concern
 
@@ -63,15 +67,18 @@ module B
     puts "B.append_features: mod=#{mod}, self=#{self}\n\n"
   end
 
-  # 2. Since B is included in class C, the included hook
-  # is called.  `Module#included` (from Ruby) is overwritten by
-  # the `included` instance method of `ActiveSupport::Concern`.
+  # 2. Since B is included in class C, the included hook is called.
+  # `Module#included` hook (from Ruby) is overwritten by the `included` instance
+  # method of `ActiveSupport::Concern`.
   #
-  # Since the `base` is `nil`, `@included_block` is set as an
-  # instance variable in `Concern`.
+  # Since the `base` is `nil`, `@included_block` is set to the block passed as
+  # an instance variable in `Concern`.
   included(nil) do  # base is set as nil by default
-    # included_block
+    # the block passed
     puts "This is the included block in module #{self}!"
+
+    # the call to `meaning_of_life_and_the_universe` is evaluated in the context
+    # of this block, which is class C (see end of (3) for further details).
     puts "Meaning of life and the universe? => #{meaning_of_life_and_the_universe}\n\n"
   end
 
@@ -134,10 +141,12 @@ class C
   end
 
   include A
-  include B         # 1. including module B into class C,
-                    # executes `Module#extended` in
-                    # `ActiveSupport::Concern`.
-                    # `@_dependencies` is set in B as []
+  include B         # 1. Since module B extends `ActiveSupport::Concern`, when
+                    # it is included into class C, it invokes the extended hook
+                    # `ActiveSupport::Concern.extended` with module B as `base`.
+                    #
+                    # Here, the instance variable `@_dependencies` is set in B
+                    # as []
 
 end
 
