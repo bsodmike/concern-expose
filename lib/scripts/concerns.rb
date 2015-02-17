@@ -4,6 +4,12 @@ require 'active_support/concern'
 # Overwrite `ActiveSupport::Concern` to add output to STDOUT.
 module ActiveSupport
   module Concern
+    def self.extended(base) #:nodoc:
+      base.instance_variable_set(:@_dependencies, [])
+      puts "Concern.extended: #{self} extended in #{base}\
+        \n=> @_dependencies=#{base.instance_variable_get(:@_dependencies)}\n\n"
+    end
+
     def append_features(base)
       puts "Concern#appended_features: \n#{caller.reject { |e| (e =~ /include|class\:/).nil? }.join("\n")}"
       puts "> Base: #{base}"
@@ -14,7 +20,10 @@ module ActiveSupport
           return false
         else
           return false if base < self
-          @_dependencies.each { |dep| base.send(:include, dep) }
+          @_dependencies.each do |dep|
+            puts "> Resolving dependecies for #{self}, by including #{dep} into base #{base}"
+            base.send(:include, dep)
+          end
           super
           base.extend const_get(:ClassMethods) if const_defined?(:ClassMethods)
           base.class_eval(&@_included_block) if instance_variable_defined?(:@_included_block)
@@ -42,6 +51,10 @@ module A
     puts "A.append_features: mod=#{mod}, self=#{self}\n\n"
   end
 
+  def self.included(mod)
+    super
+    puts "A.included: #{self} included in #{mod}\n\n"
+  end
 end
 
 # This is a dependency on module B
@@ -54,6 +67,11 @@ module D
     super
     puts "D.append_features: mod=#{mod}, self=#{self}\n\n"
   end
+
+  def self.included(mod)
+    super
+    puts "D.included: #{self} included in #{mod}\n\n"
+  end
 end
 
 # Notice how module B's dependency on D is resolved by `ActiveSupport::Concern`
@@ -65,6 +83,11 @@ module B
   def self.append_features(mod)
     super
     puts "B.append_features: mod=#{mod}, self=#{self}\n\n"
+  end
+
+  def self.included(mod)
+    super
+    puts "B.included: #{self} included in #{mod}\n\n"
   end
 
   # 2. Since B is included in class C, the included hook is called.
@@ -155,4 +178,4 @@ _c = C.new
 puts "Calling C#get_ivar..."
 _c.get_ivar
 
-binding.pry
+#binding.pry
